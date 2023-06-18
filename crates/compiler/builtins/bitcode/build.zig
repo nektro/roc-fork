@@ -5,9 +5,7 @@ const CrossTarget = std.zig.CrossTarget;
 const Arch = std.Target.Cpu.Arch;
 
 pub fn build(b: *Builder) void {
-    // b.setPreferredReleaseMode(.Debug);
-    b.setPreferredReleaseMode(.ReleaseFast);
-    const mode = b.standardReleaseOptions();
+    const mode = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
     // Options
     const fallback_main_path = "./src/main.zig";
@@ -15,8 +13,10 @@ pub fn build(b: *Builder) void {
     const main_path = b.option([]const u8, "main-path", main_path_desc) orelse fallback_main_path;
 
     // Tests
-    var main_tests = b.addTest(main_path);
-    main_tests.setBuildMode(mode);
+    var main_tests = b.addTest(.{
+        .root_source_file = .{ .path = main_path },
+        .optimize = mode,
+    });
     main_tests.linkSystemLibrary("c");
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&main_tests.step);
@@ -44,8 +44,6 @@ pub fn build(b: *Builder) void {
     generateObjectFile(b, mode, host_target, main_path, "object", "builtins-host");
     generateObjectFile(b, mode, windows64_target, main_path, "windows-x86_64-object", "builtins-windows-x86_64");
     generateObjectFile(b, mode, wasm32_target, main_path, "wasm32-object", "builtins-wasm32");
-
-    removeInstallSteps(b);
 }
 
 // TODO zig 0.9 can generate .bc directly, switch to that when it is released!
@@ -57,13 +55,16 @@ fn generateLlvmIrFile(
     step_name: []const u8,
     object_name: []const u8,
 ) void {
-    const obj = b.addObject(object_name, main_path);
-    obj.setBuildMode(mode);
+    const obj = b.addObject(.{
+        .name = object_name,
+        .root_source_file = .{ .path = main_path },
+        .optimize = mode,
+        .target = target,
+    });
     obj.strip = true;
     obj.emit_llvm_ir = .emit;
     obj.emit_llvm_bc = .emit;
     obj.emit_bin = .no_emit;
-    obj.target = target;
 
     const ir = b.step(step_name, "Build LLVM ir");
     ir.dependOn(&obj.step);
@@ -82,12 +83,14 @@ fn generateObjectFile(
     step_name: []const u8,
     object_name: []const u8,
 ) void {
-    const obj = b.addObject(object_name, main_path);
-    obj.setBuildMode(mode);
+    const obj = b.addObject(.{
+        .name = object_name,
+        .root_source_file = .{ .path = main_path },
+        .optimize = mode,
+        .target = target,
+    });
     obj.linkSystemLibrary("c");
-    obj.setOutputDir(".");
     obj.strip = true;
-    obj.target = target;
     obj.link_function_sections = true;
     const obj_step = b.step(step_name, "Build object file for linking");
     obj_step.dependOn(&obj.step);
@@ -96,7 +99,7 @@ fn generateObjectFile(
 fn makeLinux32Target() CrossTarget {
     var target = CrossTarget.parse(.{}) catch unreachable;
 
-    target.cpu_arch = std.Target.Cpu.Arch.i386;
+    target.cpu_arch = std.Target.Cpu.Arch.x86;
     target.os_tag = std.Target.Os.Tag.linux;
     target.abi = std.Target.Abi.musl;
 
@@ -132,13 +135,4 @@ fn makeWasm32Target() CrossTarget {
     target.abi = std.Target.Abi.none;
 
     return target;
-}
-
-fn removeInstallSteps(b: *Builder) void {
-    for (b.top_level_steps.items) |top_level_step, i| {
-        const name = top_level_step.step.name;
-        if (mem.eql(u8, name, "install") or mem.eql(u8, name, "uninstall")) {
-            _ = b.top_level_steps.swapRemove(i);
-        }
-    }
 }
