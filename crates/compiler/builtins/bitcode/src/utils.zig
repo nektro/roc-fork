@@ -83,8 +83,7 @@ fn testing_roc_panic(c_ptr: *anyopaque, tag_id: u32) callconv(.C) void {
 fn testing_roc_memcpy(dest: *anyopaque, src: *anyopaque, bytes: usize) callconv(.C) ?*anyopaque {
     const zig_dest = @ptrCast([*]u8, dest);
     const zig_src = @ptrCast([*]u8, src);
-
-    @memcpy(zig_dest, zig_src, bytes);
+    @memcpy(zig_dest[0..bytes], zig_src[0..bytes]);
     return dest;
 }
 

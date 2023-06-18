@@ -52,8 +52,7 @@ pub const RocStr = extern struct {
     // small string, and returns a (pointer, len) tuple which points to them.
     pub fn init(bytes_ptr: [*]const u8, length: usize) RocStr {
         var result = RocStr.allocate(length);
-        @memcpy(result.asU8ptrMut(), bytes_ptr, length);
-
+        _memcpy(result.asU8ptrMut(), bytes_ptr, length);
         return result;
     }
 
@@ -213,7 +212,7 @@ pub const RocStr = extern struct {
             var old_bytes: [*]u8 = @ptrCast([*]u8, str.str_bytes);
             var new_bytes: [*]u8 = @ptrCast([*]u8, new_str.str_bytes);
 
-            @memcpy(new_bytes, old_bytes, str.str_len);
+            _memcpy(new_bytes, old_bytes, str.str_len);
 
             return new_str;
         }
@@ -265,8 +264,8 @@ pub const RocStr = extern struct {
         const source_ptr = self.asU8ptr();
         const dest_ptr = result.asU8ptrMut();
 
-        @memcpy(dest_ptr, source_ptr, old_length);
-        @memset(dest_ptr + old_length, 0, delta_length);
+        _memcpy(dest_ptr, source_ptr, old_length);
+        @memset((dest_ptr + old_length)[0..delta_length], 0);
 
         self.decref();
 
@@ -439,8 +438,7 @@ pub const RocStr = extern struct {
     // only needs to live long enough to be passed as an argument to
     // a C function - like the file path argument to `fopen`.
     pub fn memcpy(self: RocStr, dest: [*]u8) void {
-        const src = self.asU8ptr();
-        @memcpy(dest, src, self.len());
+        @memcpy(dest[0..self.len()], self.asSlice());
     }
 
     test "RocStr.eq: small, equal" {
@@ -886,7 +884,7 @@ fn initFromBigStr(slice_bytes: [*]u8, len: usize, ref_ptr: usize) RocStr {
 // TODO: relpace this with @qualCast or @constCast in future version of zig
 fn constCast(ptr: [*]const u8) [*]u8 {
     var result: [*]u8 = undefined;
-    @memcpy(@ptrCast([*]u8, &result), @ptrCast([*]const u8, &ptr), @sizeOf([*]u8));
+    _memcpy(@ptrCast([*]u8, &result), @ptrCast([*]const u8, &ptr), @sizeOf([*]u8));
     return result;
 }
 
@@ -1609,7 +1607,7 @@ pub fn repeat(string: RocStr, count: usize) callconv(.C) RocStr {
 
     var i: usize = 0;
     while (i < count) : (i += 1) {
-        @memcpy(ret_string_ptr + (i * bytes_len), bytes_ptr, bytes_len);
+        _memcpy(ret_string_ptr + (i * bytes_len), bytes_ptr, bytes_len);
     }
 
     return ret_string;
@@ -1745,7 +1743,7 @@ fn strConcat(arg1: RocStr, arg2: RocStr) RocStr {
         const combined_length = arg1.len() + arg2.len();
 
         var result = arg1.reallocate(combined_length);
-        @memcpy(result.asU8ptrMut() + arg1.len(), arg2.asU8ptr(), arg2.len());
+        _memcpy(result.asU8ptrMut() + arg1.len(), arg2.asU8ptr(), arg2.len());
 
         return result;
     }
@@ -1882,7 +1880,7 @@ inline fn strToBytes(arg: RocStr) RocList {
     } else if (arg.isSmallStr()) {
         const ptr = utils.allocateWithRefcount(length, RocStr.alignment);
 
-        @memcpy(ptr, arg.asU8ptr(), length);
+        _memcpy(ptr, arg.asU8ptr(), length);
 
         return RocList{ .length = length, .bytes = ptr, .capacity_or_ref_ptr = length };
     } else {
@@ -1980,7 +1978,7 @@ pub fn isValidUnicode(buf: []const u8) bool {
     var i: usize = 0;
     while (i + step < buf.len) {
         var bytes: u64 = undefined;
-        @memcpy(@ptrCast([*]u8, &bytes), @ptrCast([*]const u8, buf) + i, size);
+        _memcpy(@ptrCast([*]u8, &bytes), @ptrCast([*]const u8, buf) + i, size);
         const unicode_bytes = bytes & 0x8080_8080_8080_8080;
         if (unicode_bytes == 0) {
             i += step;
@@ -1993,7 +1991,7 @@ pub fn isValidUnicode(buf: []const u8) bool {
             // This forces prefetching, otherwise the loop can run at about half speed.
             if (i + 4 >= buf.len) break;
             var small_buf: [4]u8 = undefined;
-            @memcpy(&small_buf, @ptrCast([*]const u8, buf) + i, 4);
+            @memcpy(&small_buf, (@ptrCast([*]const u8, buf) + i)[0..4]);
             // TODO: Should we always inline these function calls below?
             if (std.unicode.utf8ByteSequenceLength(small_buf[0])) |cp_len| {
                 if (std.meta.isError(std.unicode.utf8Decode(small_buf[0..cp_len]))) {
@@ -2062,7 +2060,7 @@ fn expectOk(result: FromUtf8Result) !void {
 
 fn sliceHelp(bytes: [*]const u8, length: usize) RocList {
     var list = RocList.allocate(RocStr.alignment, length, @sizeOf(u8));
-    @memcpy(list.bytes.?, bytes, length);
+    _memcpy(list.bytes.?, bytes[0..length], length);
     list.length = length;
     return list;
 }
@@ -2894,10 +2892,10 @@ pub fn strCloneTo(
 
         // write the string struct
         const array = relative.asArray();
-        @memcpy(ptr + offset, &array, WIDTH);
+        _memcpy(ptr + offset, &array, WIDTH);
 
         // write the string bytes just after the struct
-        @memcpy(ptr + extra_offset, slice.ptr, slice.len);
+        @memcpy((ptr + extra_offset)[0..slice.len], slice);
 
         return extra_offset + slice.len;
     }
@@ -2927,9 +2925,14 @@ pub fn strReleaseExcessCapacity(
         const source_ptr = string.asU8ptr();
         const dest_ptr = output.asU8ptrMut();
 
-        @memcpy(dest_ptr, source_ptr, old_length);
+        _memcpy(dest_ptr, source_ptr, old_length);
         string.decref();
 
         return output;
     }
+}
+
+/// TODO remove in favor of using @memcpy directly
+fn _memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: usize) void {
+    @memcpy(dest[0..len], src[0..len]);
 }

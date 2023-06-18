@@ -92,8 +92,7 @@ pub const RocList = extern struct {
             const dest = list.bytes.?;
             const src = @ptrCast([*]const u8, slice.ptr);
             const num_bytes = slice.len * @sizeOf(T);
-
-            @memcpy(dest, src, num_bytes);
+            _memcpy(dest, src, num_bytes);
         }
 
         return list;
@@ -165,7 +164,7 @@ pub const RocList = extern struct {
         var new_bytes: [*]u8 = @ptrCast([*]u8, new_list.bytes);
 
         const number_of_bytes = self.len() * element_width;
-        @memcpy(new_bytes, old_bytes, number_of_bytes);
+        _memcpy(new_bytes, old_bytes, number_of_bytes);
 
         // NOTE we fuse an increment of all keys/values with a decrement of the input list.
         self.decref(alignment);
@@ -244,9 +243,9 @@ pub const RocList = extern struct {
 
         // transfer the memory
         if (self.bytes) |source_ptr| {
-            @memcpy(dest_ptr, source_ptr, old_length * element_width);
-            @memset(dest_ptr + old_length * element_width, 0, delta_length * element_width);
             const dest_ptr = result.bytes.?;
+            _memcpy(dest_ptr, source_ptr, old_length * element_width);
+            @memset((dest_ptr + old_length * element_width)[0 .. delta_length * element_width], 0);
         }
 
         self.decref(alignment);
@@ -510,7 +509,7 @@ pub fn listReleaseExcessCapacity(
         var output = RocList.allocateExact(alignment, old_length, element_width);
         if (list.bytes) |source_ptr| {
             const dest_ptr = output.bytes.?;
-            @memcpy(dest_ptr, source_ptr, old_length * element_width);
+            _memcpy(dest_ptr, source_ptr, old_length * element_width);
         }
         list.decref(alignment);
         return output;
@@ -528,7 +527,7 @@ pub fn listAppendUnsafe(
 
     if (output.bytes) |target| {
         if (element) |source| {
-            @memcpy(target + old_length * element_width, source, element_width);
+            _memcpy(target + old_length * element_width, source, element_width);
         }
     }
 
@@ -554,12 +553,12 @@ pub fn listPrepend(list: RocList, alignment: u32, element: Opaque, element_width
             i -= 1;
 
             // move the ith element to the (i + 1)th position
-            @memcpy(target + (i + 1) * element_width, target + i * element_width, element_width);
+            _memcpy(target + (i + 1) * element_width, target + i * element_width, element_width);
         }
 
         // finally copy in the new first element
         if (element) |source| {
-            @memcpy(target, source, element_width);
+            _memcpy(target, source, element_width);
         }
     }
 
@@ -701,8 +700,7 @@ pub fn listDropAt(
             while (i < size - 1) : (i += 1) {
                 const copy_target = source_ptr + i * element_width;
                 const copy_source = copy_target + element_width;
-
-                @memcpy(copy_target, copy_source, element_width);
+                _memcpy(copy_target, copy_source, element_width);
             }
 
             var new_list = list;
@@ -715,12 +713,12 @@ pub fn listDropAt(
         const target_ptr = output.bytes.?;
 
         const head_size = drop_index * element_width;
-        @memcpy(target_ptr, source_ptr, head_size);
+        _memcpy(target_ptr, source_ptr, head_size);
 
         const tail_target = target_ptr + drop_index * element_width;
         const tail_source = source_ptr + (drop_index + 1) * element_width;
         const tail_size = (size - drop_index - 1) * element_width;
-        @memcpy(tail_target, tail_source, tail_size);
+        _memcpy(tail_target, tail_source, tail_size);
 
         list.decref(alignment);
 
@@ -790,10 +788,10 @@ pub fn listSortWith(
 
 // SWAP ELEMENTS
 
-inline fn swapHelp(width: usize, temporary: [*]u8, ptr1: [*]u8, ptr2: [*]u8) void {
-    @memcpy(temporary, ptr1, width);
-    @memcpy(ptr1, ptr2, width);
-    @memcpy(ptr2, temporary, width);
+inline fn swapHelp(width: usize, noalias temporary: [*]u8, noalias ptr1: [*]u8, noalias ptr2: [*]u8) void {
+    _memcpy(temporary, ptr1, width);
+    _memcpy(ptr1, ptr2, width);
+    _memcpy(ptr2, temporary, width);
 }
 
 fn swap(width_initial: usize, p1: [*]u8, p2: [*]u8) void {
@@ -850,7 +848,7 @@ pub fn listConcat(list_a: RocList, list_b: RocList, alignment: u32, element_widt
         // These must exist, otherwise, the lists would have been empty.
         const source_a = resized_list_a.bytes.?;
         const source_b = list_b.bytes.?;
-        @memcpy(source_a + list_a.len() * element_width, source_b, list_b.len() * element_width);
+        _memcpy(source_a + list_a.len() * element_width, source_b, list_b.len() * element_width);
 
         // decrement list b.
         list_b.decref(alignment);
@@ -871,7 +869,7 @@ pub fn listConcat(list_a: RocList, list_b: RocList, alignment: u32, element_widt
         const byte_count_a = list_a.len() * element_width;
         const byte_count_b = list_b.len() * element_width;
         mem.copyBackwards(u8, source_b[byte_count_a .. byte_count_a + byte_count_b], source_b[0..byte_count_b]);
-        @memcpy(source_b, source_a, byte_count_a);
+        _memcpy(source_b, source_a, byte_count_a);
 
         // decrement list a.
         list_a.decref(alignment);
@@ -887,8 +885,8 @@ pub fn listConcat(list_a: RocList, list_b: RocList, alignment: u32, element_widt
     const source_a = list_a.bytes.?;
     const source_b = list_b.bytes.?;
 
-    @memcpy(target, source_a, list_a.len() * element_width);
-    @memcpy(target + list_a.len() * element_width, source_b, list_b.len() * element_width);
+    _memcpy(target, source_a, list_a.len() * element_width);
+    _memcpy(target + list_a.len() * element_width, source_b, list_b.len() * element_width);
 
     // decrement list a and b.
     list_a.decref(alignment);
@@ -941,10 +939,10 @@ inline fn listReplaceInPlaceHelp(
     var element_at_index = (list.bytes.?) + (index * element_width);
 
     // copy out the old element
-    @memcpy(out_element.?, element_at_index, element_width);
+    _memcpy(out_element.?, element_at_index, element_width);
 
     // copy in the new element
-    @memcpy(element_at_index, element.?, element_width);
+    _memcpy(element_at_index, element.?, element_width);
 
     return list;
 }
@@ -983,4 +981,9 @@ test "listConcat: non-unique with unique overlapping" {
     defer wanted.decref(@sizeOf(u8));
 
     try expect(concatted.eql(wanted));
+}
+
+/// TODO remove in favor of using @memcpy directly
+fn _memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: usize) void {
+    @memcpy(dest[0..len], src[0..len]);
 }
