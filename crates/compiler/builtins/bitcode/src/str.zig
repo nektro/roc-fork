@@ -899,9 +899,9 @@ fn strSplitHelp(array: [*]RocStr, string: RocStr, delimiter: RocStr) void {
     const str_len = string.len();
     const ref_ptr = @ptrToInt(string.getRefcountPtr()) >> 1;
     const init_fn = if (string.isSmallStr())
-        initFromSmallStr
+        &initFromSmallStr
     else
-        initFromBigStr;
+        &initFromBigStr;
 
     const delimiter_bytes_ptrs = delimiter.asU8ptr();
     const delimiter_len = delimiter.len();
@@ -1445,9 +1445,9 @@ pub fn strGraphemes(roc_str: RocStr) callconv(.C) RocList {
 
     const ref_ptr = @ptrToInt(roc_str.getRefcountPtr()) >> 1;
     const init_fn = if (roc_str.isSmallStr())
-        initFromSmallStr
+        &initFromSmallStr
     else
-        initFromBigStr;
+        &initFromBigStr;
 
     var result = RocList.allocate(@alignOf(RocStr), countGraphemeClusters(roc_str), @sizeOf(RocStr));
     const graphemes = result.elements(RocStr) orelse return result;
