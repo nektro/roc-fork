@@ -1,5 +1,4 @@
 const std = @import("std");
-const always_inline = std.builtin.CallOptions.Modifier.always_inline;
 const Monotonic = std.builtin.AtomicOrder.Monotonic;
 
 pub fn WithOverflow(comptime T: type) type {
@@ -175,7 +174,7 @@ pub fn decrefC(
     // this is of course unsafe, but we trust what we get from the llvm side
     var bytes = @ptrCast([*]isize, bytes_or_null);
 
-    return @call(.{ .modifier = always_inline }, decref_ptr_to_refcount, .{ bytes, alignment });
+    return @call(.always_inline, decref_ptr_to_refcount, .{ bytes, alignment });
 }
 
 pub fn decrefCheckNullC(
@@ -184,7 +183,7 @@ pub fn decrefCheckNullC(
 ) callconv(.C) void {
     if (bytes_or_null) |bytes| {
         const isizes: [*]isize = @ptrCast([*]isize, @alignCast(@sizeOf(isize), bytes));
-        return @call(.{ .modifier = always_inline }, decref_ptr_to_refcount, .{ isizes - 1, alignment });
+        return @call(.always_inline, decref_ptr_to_refcount, .{ isizes - 1, alignment });
     }
 }
 

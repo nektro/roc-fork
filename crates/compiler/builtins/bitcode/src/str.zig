@@ -4,7 +4,6 @@ const grapheme = @import("helpers/grapheme.zig");
 const UpdateMode = utils.UpdateMode;
 const std = @import("std");
 const mem = std.mem;
-const always_inline = std.builtin.CallOptions.Modifier.always_inline;
 const unicode = std.unicode;
 const testing = std.testing;
 const expectEqual = testing.expectEqual;
@@ -385,7 +384,7 @@ pub const RocStr = extern struct {
         }
 
         // otherwise, check if the refcount is one
-        return @call(.{ .modifier = always_inline }, RocStr.isRefcountOne, .{self});
+        return @call(.always_inline, RocStr.isRefcountOne, .{self});
     }
 
     fn isRefcountOne(self: RocStr) bool {
@@ -562,7 +561,7 @@ pub const RocStr = extern struct {
 };
 
 pub fn init(bytes_ptr: [*]const u8, length: usize) callconv(.C) RocStr {
-    return @call(.{ .modifier = always_inline }, RocStr.init, .{ bytes_ptr, length });
+    return @call(.always_inline, RocStr.init, .{ bytes_ptr, length });
 }
 
 // Str.equal
@@ -577,7 +576,7 @@ pub fn strNumberOfBytes(string: RocStr) callconv(.C) usize {
 
 // Str.toScalars
 pub fn strToScalarsC(str: RocStr) callconv(.C) RocList {
-    return @call(.{ .modifier = always_inline }, strToScalars, .{str});
+    return @call(.always_inline, strToScalars, .{str});
 }
 
 fn strToScalars(string: RocStr) callconv(.C) RocList {
@@ -815,7 +814,7 @@ test "strToScalars: Multiple 4-byte UTF-8 characters" {
 pub fn exportFromInt(comptime T: type, comptime name: []const u8) void {
     comptime var f = struct {
         fn func(int: T) callconv(.C) RocStr {
-            return @call(.{ .modifier = always_inline }, strFromIntHelp, .{ T, int });
+            return @call(.always_inline, strFromIntHelp, .{ T, int });
         }
     }.func;
 
@@ -843,7 +842,7 @@ fn strFromIntHelp(comptime T: type, int: T) RocStr {
 pub fn exportFromFloat(comptime T: type, comptime name: []const u8) void {
     comptime var f = struct {
         fn func(float: T) callconv(.C) RocStr {
-            return @call(.{ .modifier = always_inline }, strFromFloatHelp, .{ T, float });
+            return @call(.always_inline, strFromFloatHelp, .{ T, float });
         }
     }.func;
 
@@ -1733,7 +1732,7 @@ test "endsWith: hello world ends with world" {
 
 // Str.concat
 pub fn strConcatC(arg1: RocStr, arg2: RocStr) callconv(.C) RocStr {
-    return @call(.{ .modifier = always_inline }, strConcat, .{ arg1, arg2 });
+    return @call(.always_inline, strConcat, .{ arg1, arg2 });
 }
 
 fn strConcat(arg1: RocStr, arg2: RocStr) RocStr {
@@ -1795,7 +1794,7 @@ pub fn strJoinWithC(list: RocList, separator: RocStr) callconv(.C) RocStr {
         .list_capacity_or_ref_ptr = list.capacity_or_ref_ptr,
     };
 
-    return @call(.{ .modifier = always_inline }, strJoinWith, .{ roc_list_str, separator });
+    return @call(.always_inline, strJoinWith, .{ roc_list_str, separator });
 }
 
 fn strJoinWith(list: RocListStr, separator: RocStr) RocStr {
@@ -1911,7 +1910,7 @@ pub fn fromUtf8RangeC(
     count: usize,
     update_mode: UpdateMode,
 ) callconv(.C) void {
-    output.* = @call(.{ .modifier = always_inline }, fromUtf8Range, .{ list, start, count, update_mode });
+    output.* = @call(.always_inline, fromUtf8Range, .{ list, start, count, update_mode });
 }
 
 pub fn fromUtf8Range(arg: RocList, start: usize, count: usize, update_mode: UpdateMode) FromUtf8Result {
@@ -2013,7 +2012,7 @@ pub fn isValidUnicode(buf: []const u8) bool {
         if (i == buf.len) return true;
     }
 
-    return @call(.{ .modifier = always_inline }, unicode.utf8ValidateSlice, .{buf[i..]});
+    return @call(.always_inline, unicode.utf8ValidateSlice, .{buf[i..]});
 }
 
 const Utf8DecodeError = error{

@@ -4,7 +4,6 @@ const num_ = @import("num.zig");
 const utils = @import("utils.zig");
 
 const math = std.math;
-const always_inline = std.builtin.CallOptions.Modifier.always_inline;
 const RocStr = str.RocStr;
 const WithOverflow = utils.WithOverflow;
 const roc_panic = @import("panic.zig").panic_help;
@@ -1093,7 +1092,7 @@ test "div: 500 / 1000" {
 // exports
 
 pub fn fromStr(arg: RocStr) callconv(.C) num_.NumParseResult(i128) {
-    if (@call(.{ .modifier = always_inline }, RocDec.fromStr, .{arg})) |dec| {
+    if (@call(.always_inline, RocDec.fromStr, .{arg})) |dec| {
         return .{ .errorcode = 0, .value = dec.num };
     } else {
         return .{ .errorcode = 1, .value = 0 };
@@ -1101,61 +1100,61 @@ pub fn fromStr(arg: RocStr) callconv(.C) num_.NumParseResult(i128) {
 }
 
 pub fn toStr(arg: RocDec) callconv(.C) RocStr {
-    return @call(.{ .modifier = always_inline }, RocDec.toStr, .{arg});
+    return @call(.always_inline, RocDec.toStr, .{arg});
 }
 
 pub fn fromF64C(arg: f64) callconv(.C) i128 {
-    return if (@call(.{ .modifier = always_inline }, RocDec.fromF64, .{arg})) |dec| dec.num else @panic("TODO runtime exception failing convert f64 to RocDec");
+    return if (@call(.always_inline, RocDec.fromF64, .{arg})) |dec| dec.num else @panic("TODO runtime exception failing convert f64 to RocDec");
 }
 
 pub fn eqC(arg1: RocDec, arg2: RocDec) callconv(.C) bool {
-    return @call(.{ .modifier = always_inline }, RocDec.eq, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.eq, .{ arg1, arg2 });
 }
 
 pub fn neqC(arg1: RocDec, arg2: RocDec) callconv(.C) bool {
-    return @call(.{ .modifier = always_inline }, RocDec.neq, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.neq, .{ arg1, arg2 });
 }
 
 pub fn negateC(arg: RocDec) callconv(.C) i128 {
-    return if (@call(.{ .modifier = always_inline }, RocDec.negate, .{arg})) |dec| dec.num else @panic("TODO overflow for negating RocDec");
+    return if (@call(.always_inline, RocDec.negate, .{arg})) |dec| dec.num else @panic("TODO overflow for negating RocDec");
 }
 
 pub fn addC(arg1: RocDec, arg2: RocDec) callconv(.C) WithOverflow(RocDec) {
-    return @call(.{ .modifier = always_inline }, RocDec.addWithOverflow, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.addWithOverflow, .{ arg1, arg2 });
 }
 
 pub fn subC(arg1: RocDec, arg2: RocDec) callconv(.C) WithOverflow(RocDec) {
-    return @call(.{ .modifier = always_inline }, RocDec.subWithOverflow, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.subWithOverflow, .{ arg1, arg2 });
 }
 
 pub fn mulC(arg1: RocDec, arg2: RocDec) callconv(.C) WithOverflow(RocDec) {
-    return @call(.{ .modifier = always_inline }, RocDec.mulWithOverflow, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.mulWithOverflow, .{ arg1, arg2 });
 }
 
 pub fn divC(arg1: RocDec, arg2: RocDec) callconv(.C) i128 {
-    return @call(.{ .modifier = always_inline }, RocDec.div, .{ arg1, arg2 }).num;
+    return @call(.always_inline, RocDec.div, .{ arg1, arg2 }).num;
 }
 
 pub fn addOrPanicC(arg1: RocDec, arg2: RocDec) callconv(.C) RocDec {
-    return @call(.{ .modifier = always_inline }, RocDec.add, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.add, .{ arg1, arg2 });
 }
 
 pub fn addSaturatedC(arg1: RocDec, arg2: RocDec) callconv(.C) RocDec {
-    return @call(.{ .modifier = always_inline }, RocDec.addSaturated, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.addSaturated, .{ arg1, arg2 });
 }
 
 pub fn subOrPanicC(arg1: RocDec, arg2: RocDec) callconv(.C) RocDec {
-    return @call(.{ .modifier = always_inline }, RocDec.sub, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.sub, .{ arg1, arg2 });
 }
 
 pub fn subSaturatedC(arg1: RocDec, arg2: RocDec) callconv(.C) RocDec {
-    return @call(.{ .modifier = always_inline }, RocDec.subSaturated, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.subSaturated, .{ arg1, arg2 });
 }
 
 pub fn mulOrPanicC(arg1: RocDec, arg2: RocDec) callconv(.C) RocDec {
-    return @call(.{ .modifier = always_inline }, RocDec.mul, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.mul, .{ arg1, arg2 });
 }
 
 pub fn mulSaturatedC(arg1: RocDec, arg2: RocDec) callconv(.C) RocDec {
-    return @call(.{ .modifier = always_inline }, RocDec.mulSaturated, .{ arg1, arg2 });
+    return @call(.always_inline, RocDec.mulSaturated, .{ arg1, arg2 });
 }
