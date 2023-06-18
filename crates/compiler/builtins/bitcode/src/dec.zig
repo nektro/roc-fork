@@ -92,22 +92,13 @@ pub const RocDec = extern struct {
 
         var before_val_i128: ?i128 = null;
         if (before_val_not_adjusted) |before| {
-            var result: i128 = undefined;
-            var overflowed = @mulWithOverflow(i128, before, one_point_zero_i128, &result);
-            if (overflowed) {
-                @panic("TODO runtime exception for overflow!");
-            }
-            before_val_i128 = result;
+            before_val_i128 = std.math.mul(i128, before, one_point_zero_i128) catch @panic("TODO runtime exception for overflow!");
         }
 
         const dec: RocDec = blk: {
             if (before_val_i128) |before| {
                 if (after_val_i128) |after| {
-                    var result: i128 = undefined;
-                    var overflowed = @addWithOverflow(i128, before, after, &result);
-                    if (overflowed) {
-                        @panic("TODO runtime exception for overflow!");
-                    }
+                    const result = std.math.add(i128, before, after) catch @panic("TODO runtime exception for overflow!");
                     break :blk .{ .num = result };
                 } else {
                     break :blk .{ .num = before };
@@ -222,10 +213,8 @@ pub const RocDec = extern struct {
     }
 
     pub fn addWithOverflow(self: RocDec, other: RocDec) WithOverflow(RocDec) {
-        var answer: i128 = undefined;
-        const overflowed = @addWithOverflow(i128, self.num, other.num, &answer);
-
-        return .{ .value = RocDec{ .num = answer }, .has_overflowed = overflowed };
+        const ov = @addWithOverflow(self.num, other.num);
+        return .{ .value = RocDec{ .num = ov[0] }, .has_overflowed = ov[1] > 0 };
     }
 
     pub fn add(self: RocDec, other: RocDec) RocDec {
@@ -254,10 +243,8 @@ pub const RocDec = extern struct {
     }
 
     pub fn subWithOverflow(self: RocDec, other: RocDec) WithOverflow(RocDec) {
-        var answer: i128 = undefined;
-        const overflowed = @subWithOverflow(i128, self.num, other.num, &answer);
-
-        return .{ .value = RocDec{ .num = answer }, .has_overflowed = overflowed };
+        const ov = @subWithOverflow(self.num, other.num);
+        return .{ .value = RocDec{ .num = ov[0] }, .has_overflowed = ov[1] > 0 };
     }
 
     pub fn sub(self: RocDec, other: RocDec) RocDec {
@@ -444,14 +431,11 @@ fn mul_and_decimalize(a: u128, b: u128) i128 {
 
     // Add 1.
     // This can't overflow because the initial numbers are only 127bit due to removing the sign bit.
-    var overflowed = @addWithOverflow(u128, lhs_lo, 1, &lhs_lo);
-    lhs_hi = blk: {
-        if (overflowed) {
-            break :blk lhs_hi + 1;
-        } else {
-            break :blk lhs_hi + 0;
-        }
-    };
+    {
+        const ov = @addWithOverflow(lhs_lo, 1);
+        lhs_lo = ov[0];
+        lhs_hi += if (ov[1] > 0) 1 else 0;
+    }
 
     // This needs to do multiplication in a way that expands,
     // since we throw away 315 bits we care only about the higher end, not lower.
@@ -479,70 +463,60 @@ fn mul_and_decimalize(a: u128, b: u128) i128 {
 
     // b = e + f + h
     var e_plus_f: u128 = undefined;
-    overflowed = @addWithOverflow(u128, e, f, &e_plus_f);
     var b_carry1: u128 = undefined;
-    if (overflowed) {
-        b_carry1 = 1;
-    } else {
-        b_carry1 = 0;
+    {
+        const ov = @addWithOverflow(e, f);
+        e_plus_f = ov[0];
+        b_carry1 = if (ov[1] > 0) 1 else 0;
     }
 
     var idk: u128 = undefined;
-    overflowed = @addWithOverflow(u128, e_plus_f, h, &idk);
     var b_carry2: u128 = undefined;
-    if (overflowed) {
-        b_carry2 = 1;
-    } else {
-        b_carry2 = 0;
+    {
+        const ov = @addWithOverflow(e_plus_f, h);
+        idk = ov[0];
+        b_carry2 = if (ov[1] > 0) 1 else 0;
     }
 
     // c = carry + g + j + k // it doesn't say +k but I think it should be?
     var g_plus_j: u128 = undefined;
-    overflowed = @addWithOverflow(u128, g, j, &g_plus_j);
     var c_carry1: u128 = undefined;
-    if (overflowed) {
-        c_carry1 = 1;
-    } else {
-        c_carry1 = 0;
+    {
+        const ov = @addWithOverflow(g, j);
+        g_plus_j = ov[0];
+        c_carry1 = if (ov[1] > 0) 1 else 0;
     }
 
     var g_plus_j_plus_k: u128 = undefined;
-    overflowed = @addWithOverflow(u128, g_plus_j, k, &g_plus_j_plus_k);
     var c_carry2: u128 = undefined;
-    if (overflowed) {
-        c_carry2 = 1;
-    } else {
-        c_carry2 = 0;
+    {
+        const ov = @addWithOverflow(g_plus_j, k);
+        g_plus_j_plus_k = ov[0];
+        c_carry2 = if (ov[1] > 0) 1 else 0;
     }
 
     var c_without_bcarry2: u128 = undefined;
-    overflowed = @addWithOverflow(u128, g_plus_j_plus_k, b_carry1, &c_without_bcarry2);
     var c_carry3: u128 = undefined;
-    if (overflowed) {
-        c_carry3 = 1;
-    } else {
-        c_carry3 = 0;
+    {
+        const ov = @addWithOverflow(g_plus_j_plus_k, b_carry1);
+        c_without_bcarry2 = ov[0];
+        c_carry3 = if (ov[1] > 0) 1 else 0;
     }
 
     var c: u128 = undefined;
-    overflowed = @addWithOverflow(u128, c_without_bcarry2, b_carry2, &c);
     var c_carry4: u128 = undefined;
-    if (overflowed) {
-        c_carry4 = 1;
-    } else {
-        c_carry4 = 0;
+    {
+        const ov = @addWithOverflow(c_without_bcarry2, b_carry2);
+        c = ov[0];
+        c_carry4 = if (ov[1] > 0) 1 else 0;
     }
 
     // d = carry + l
     var d: u128 = undefined;
-    overflowed = @addWithOverflow(u128, l, c_carry1, &d);
-    overflowed = overflowed or @addWithOverflow(u128, d, c_carry2, &d);
-    overflowed = overflowed or @addWithOverflow(u128, d, c_carry3, &d);
-    overflowed = overflowed or @addWithOverflow(u128, d, c_carry4, &d);
-
-    if (overflowed) {
-        @panic("TODO runtime exception for overflow!");
-    }
+    d = std.math.add(u128, l, c_carry1) catch @panic("TODO runtime exception for overflow!");
+    d = std.math.add(u128, d, c_carry2) catch @panic("TODO runtime exception for overflow!");
+    d = std.math.add(u128, d, c_carry3) catch @panic("TODO runtime exception for overflow!");
+    d = std.math.add(u128, d, c_carry4) catch @panic("TODO runtime exception for overflow!");
 
     // Final 512bit value is d, c, b, a
     // need to left shift 321 times
@@ -671,15 +645,11 @@ fn div_u256_by_u128(numer: U256, denom: u128) U256 {
         // NOTE: Modified from `(d - r - 1) >> (N_UTWORD_BITS - 1)` to be an
         // **arithmetic** shift.
 
-        var lo: u128 = undefined;
-        var lo_overflowed: bool = undefined;
-        var hi: u128 = undefined;
+        const lo_ov1 = @subWithOverflow(denom, r.lo);
+        var hi = 0 -% @intCast(u128, lo_ov1[1]) -% r.hi;
 
-        lo_overflowed = @subWithOverflow(u128, denom, r.lo, &lo);
-        hi = 0 -% @intCast(u128, @bitCast(u1, lo_overflowed)) -% r.hi;
-
-        lo_overflowed = @subWithOverflow(u128, lo, 1, &lo);
-        hi = hi -% @intCast(u128, @bitCast(u1, lo_overflowed));
+        const lo_ov2 = @subWithOverflow(lo_ov1[0], 1);
+        hi = hi -% @intCast(u128, lo_ov2[1]);
 
         // NOTE: this U256 was originally created by:
         //
@@ -705,10 +675,10 @@ fn div_u256_by_u128(numer: U256, denom: u128) U256 {
         carry = s.lo & 1;
 
         // var (lo, carry) = r.lo.overflowing_sub(denom & s.lo);
-        lo_overflowed = @subWithOverflow(u128, r.lo, (denom & s.lo), &lo);
-        hi = r.hi -% @intCast(u128, @bitCast(u1, lo_overflowed));
+        const lo_ov3 = @subWithOverflow(r.lo, (denom & s.lo));
+        hi = r.hi -% @intCast(u128, lo_ov3[1]);
 
-        r = .{ .hi = hi, .lo = lo };
+        r = .{ .hi = hi, .lo = lo_ov3[0] };
 
         sr -= 1;
     }

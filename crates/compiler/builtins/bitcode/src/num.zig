@@ -256,9 +256,8 @@ fn bytesToU128(arg: RocList, position: usize) u128 {
 fn addWithOverflow(comptime T: type, self: T, other: T) WithOverflow(T) {
     switch (@typeInfo(T)) {
         .Int => {
-            var answer: T = undefined;
-            const overflowed = @addWithOverflow(T, self, other, &answer);
-            return .{ .value = answer, .has_overflowed = overflowed };
+            const ov = @addWithOverflow(self, other);
+            return .{ .value = ov[0], .has_overflowed = ov[1] > 0 };
         },
         else => {
             const answer = self + other;
@@ -314,9 +313,8 @@ pub fn exportAddOrPanic(comptime T: type, comptime name: []const u8) void {
 fn subWithOverflow(comptime T: type, self: T, other: T) WithOverflow(T) {
     switch (@typeInfo(T)) {
         .Int => {
-            var answer: T = undefined;
-            const overflowed = @subWithOverflow(T, self, other, &answer);
-            return .{ .value = answer, .has_overflowed = overflowed };
+            const ov = @subWithOverflow(self, other);
+            return .{ .value = ov[0], .has_overflowed = ov[1] > 0 };
         },
         else => {
             const answer = self - other;
