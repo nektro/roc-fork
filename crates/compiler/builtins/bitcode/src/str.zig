@@ -1492,7 +1492,7 @@ fn graphemesTest(input: []const u8, expected: []const []const u8) !void {
     defer graphemes.decref(@sizeOf(u8));
     if (input.len == 0) return; // empty string
     const elems = graphemes.elements(RocStr) orelse unreachable;
-    for (expected) |g, i| {
+    for (expected, 0..) |g, i| {
         try std.testing.expectEqualStrings(g, elems[i].asSlice());
     }
 }

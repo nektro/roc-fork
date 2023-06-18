@@ -24,7 +24,7 @@ pub fn main() !void {
     try avg_runs(div7);
 }
 
-fn avg_runs(func: fn() u64) !void {
+fn avg_runs(func: fn () u64) !void {
     const stdout = std.io.getStdOut().writer();
     var first_run = func();
     var lowest = first_run;
@@ -50,7 +50,7 @@ fn avg_runs(func: fn() u64) !void {
 
     const median = runs[runs.len / 2];
 
-    try stdout.print("{}ns (lowest: {}ns, highest: {}ns)\n", .{median, lowest, highest});
+    try stdout.print("{}ns (lowest: {}ns, highest: {}ns)\n", .{ median, lowest, highest });
 }
 
 fn add7() u64 {

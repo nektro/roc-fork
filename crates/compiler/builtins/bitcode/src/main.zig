@@ -73,7 +73,7 @@ comptime {
     exportNumFn(num.bytesToU64C, "bytes_to_u64");
     exportNumFn(num.bytesToU128C, "bytes_to_u128");
 
-    inline for (INTEGERS) |T, i| {
+    inline for (INTEGERS, 0..) |T, i| {
         num.exportPow(T, ROC_BUILTINS ++ "." ++ NUM ++ ".pow_int.");
         num.exportDivCeil(T, ROC_BUILTINS ++ "." ++ NUM ++ ".div_ceil.");
 
