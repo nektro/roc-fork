@@ -67,8 +67,8 @@ pub const RocList = extern struct {
         }
 
         var index: usize = 0;
-        const self_bytes = self.bytes orelse unreachable;
-        const other_bytes = other.bytes orelse unreachable;
+        const self_bytes = self.bytes.?;
+        const other_bytes = other.bytes.?;
 
         while (index < self.len()) {
             if (self_bytes[index] != other_bytes[index]) {
@@ -89,7 +89,7 @@ pub const RocList = extern struct {
         var list = allocate(@alignOf(T), slice.len, @sizeOf(T));
 
         if (slice.len > 0) {
-            const dest = list.bytes orelse unreachable;
+            const dest = list.bytes.?;
             const src = @ptrCast([*]const u8, slice.ptr);
             const num_bytes = slice.len * @sizeOf(T);
 
@@ -244,10 +244,9 @@ pub const RocList = extern struct {
 
         // transfer the memory
         if (self.bytes) |source_ptr| {
-            const dest_ptr = result.bytes orelse unreachable;
-
             @memcpy(dest_ptr, source_ptr, old_length * element_width);
             @memset(dest_ptr + old_length * element_width, 0, delta_length * element_width);
+            const dest_ptr = result.bytes.?;
         }
 
         self.decref(alignment);
@@ -276,7 +275,7 @@ pub fn listMap(
         const size = list.len();
         var i: usize = 0;
         const output = RocList.allocate(alignment, size, new_element_width);
-        const target_ptr = output.bytes orelse unreachable;
+        const target_ptr = output.bytes.?;
 
         if (data_is_owned) {
             inc_n_data(data, size);
@@ -330,7 +329,7 @@ pub fn listMap2(
     if (list1.bytes) |source_a| {
         if (list2.bytes) |source_b| {
             const output = RocList.allocate(alignment, output_length, c_width);
-            const target_ptr = output.bytes orelse unreachable;
+            const target_ptr = output.bytes.?;
 
             var i: usize = 0;
             while (i < output_length) : (i += 1) {
@@ -381,7 +380,7 @@ pub fn listMap3(
         if (list2.bytes) |source_b| {
             if (list3.bytes) |source_c| {
                 const output = RocList.allocate(alignment, output_length, d_width);
-                const target_ptr = output.bytes orelse unreachable;
+                const target_ptr = output.bytes.?;
 
                 var i: usize = 0;
                 while (i < output_length) : (i += 1) {
@@ -441,7 +440,7 @@ pub fn listMap4(
             if (list3.bytes) |source_c| {
                 if (list4.bytes) |source_d| {
                     const output = RocList.allocate(alignment, output_length, e_width);
-                    const target_ptr = output.bytes orelse unreachable;
+                    const target_ptr = output.bytes.?;
 
                     var i: usize = 0;
                     while (i < output_length) : (i += 1) {
@@ -510,8 +509,7 @@ pub fn listReleaseExcessCapacity(
     } else {
         var output = RocList.allocateExact(alignment, old_length, element_width);
         if (list.bytes) |source_ptr| {
-            const dest_ptr = output.bytes orelse unreachable;
-
+            const dest_ptr = output.bytes.?;
             @memcpy(dest_ptr, source_ptr, old_length * element_width);
         }
         list.decref(alignment);
@@ -714,7 +712,7 @@ pub fn listDropAt(
         }
 
         const output = RocList.allocate(alignment, size - 1, element_width);
-        const target_ptr = output.bytes orelse unreachable;
+        const target_ptr = output.bytes.?;
 
         const head_size = drop_index * element_width;
         @memcpy(target_ptr, source_ptr, head_size);
@@ -850,8 +848,8 @@ pub fn listConcat(list_a: RocList, list_b: RocList, alignment: u32, element_widt
         const resized_list_a = list_a.reallocate(alignment, total_length, element_width);
 
         // These must exist, otherwise, the lists would have been empty.
-        const source_a = resized_list_a.bytes orelse unreachable;
-        const source_b = list_b.bytes orelse unreachable;
+        const source_a = resized_list_a.bytes.?;
+        const source_b = list_b.bytes.?;
         @memcpy(source_a + list_a.len() * element_width, source_b, list_b.len() * element_width);
 
         // decrement list b.
@@ -864,8 +862,8 @@ pub fn listConcat(list_a: RocList, list_b: RocList, alignment: u32, element_widt
         const resized_list_b = list_b.reallocate(alignment, total_length, element_width);
 
         // These must exist, otherwise, the lists would have been empty.
-        const source_a = list_a.bytes orelse unreachable;
-        const source_b = resized_list_b.bytes orelse unreachable;
+        const source_a = list_a.bytes.?;
+        const source_b = resized_list_b.bytes.?;
 
         // This is a bit special, we need to first copy the elements of list_b to the end,
         // then copy the elements of list_a to the beginning.
@@ -885,9 +883,9 @@ pub fn listConcat(list_a: RocList, list_b: RocList, alignment: u32, element_widt
     const output = RocList.allocate(alignment, total_length, element_width);
 
     // These must exist, otherwise, the lists would have been empty.
-    const target = output.bytes orelse unreachable;
-    const source_a = list_a.bytes orelse unreachable;
-    const source_b = list_b.bytes orelse unreachable;
+    const target = output.bytes.?;
+    const source_a = list_a.bytes.?;
+    const source_b = list_b.bytes.?;
 
     @memcpy(target, source_a, list_a.len() * element_width);
     @memcpy(target + list_a.len() * element_width, source_b, list_b.len() * element_width);
@@ -940,13 +938,13 @@ inline fn listReplaceInPlaceHelp(
     out_element: ?[*]u8,
 ) RocList {
     // the element we will replace
-    var element_at_index = (list.bytes orelse undefined) + (index * element_width);
+    var element_at_index = (list.bytes.?) + (index * element_width);
 
     // copy out the old element
-    @memcpy(out_element orelse undefined, element_at_index, element_width);
+    @memcpy(out_element.?, element_at_index, element_width);
 
     // copy in the new element
-    @memcpy(element_at_index, element orelse undefined, element_width);
+    @memcpy(element_at_index, element.?, element_width);
 
     return list;
 }

@@ -320,8 +320,7 @@ pub const RocStr = extern struct {
         if (self.isSmallStr()) {
             return self.asArray()[index];
         } else {
-            const bytes = self.str_bytes orelse unreachable;
-
+            const bytes = self.str_bytes.?;
             return bytes[index];
         }
     }
@@ -2064,9 +2063,8 @@ fn expectOk(result: FromUtf8Result) !void {
 
 fn sliceHelp(bytes: [*]const u8, length: usize) RocList {
     var list = RocList.allocate(RocStr.alignment, length, @sizeOf(u8));
-    @memcpy(list.bytes orelse unreachable, bytes, length);
+    @memcpy(list.bytes.?, bytes, length);
     list.length = length;
-
     return list;
 }
 
