@@ -2060,7 +2060,7 @@ fn expectOk(result: FromUtf8Result) !void {
 
 fn sliceHelp(bytes: [*]const u8, length: usize) RocList {
     var list = RocList.allocate(RocStr.alignment, length, @sizeOf(u8));
-    _memcpy(list.bytes.?, bytes[0..length], length);
+    _memcpy(list.bytes.?, bytes, length);
     list.length = length;
     return list;
 }

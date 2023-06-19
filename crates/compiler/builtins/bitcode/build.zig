@@ -18,8 +18,10 @@ pub fn build(b: *Builder) void {
         .optimize = mode,
     });
     main_tests.linkSystemLibrary("c");
+    const run_tests = b.addRunArtifact(main_tests);
+    run_tests.step.dependOn(&main_tests.step);
     const test_step = b.step("test", "Run tests");
-    test_step.dependOn(&main_tests.step);
+    test_step.dependOn(&run_tests.step);
 
     // Targets
     const host_target = b.standardTargetOptions(.{
